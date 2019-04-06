@@ -1,6 +1,6 @@
 module Main where
 
-import GraphMod
+import           GraphMod
 
 main :: IO ()
 main = collectImports
