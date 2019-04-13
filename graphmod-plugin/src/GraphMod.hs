@@ -128,19 +128,19 @@ modGraph = nub . foldMap do_one
 
 --
 buildGraph :: Opts -> [Payload] -> (GraphMod.AllEdges, GraphMod.Nodes)
-buildGraph opts payloads = maybePrune opts (aes, process nodes)
+buildGraph opts payloads = maybePrune opts (aes, processNodes)
   where
-    process nodes = collapseAll opts nodes (collapse_quals opts)
+    processNodes = collapseAll opts nodes (collapse_quals opts)
 
-    nodeMapList = zip (modGraph payloads) [0 ..]
+    nodeMapList  = zip (modGraph payloads) [0 ..]
 
-    nodeMap     = Map.fromList nodeMapList
+    nodeMap      = Map.fromList nodeMapList
 
-    nodes       = foldr insertMod Trie.empty nodeMapList
+    nodes        = foldr insertMod Trie.empty nodeMapList
 
-    aes         = foldr (makeEdges nodeMap)
-                        GraphMod.noEdges
-                        (concatMap (\(p, is) -> map (p, ) is) payloads)
+    aes          = foldr (makeEdges nodeMap)
+                         GraphMod.noEdges
+                         (concatMap (\(p, is) -> map (p, ) is) payloads)
 
     insertMod (n, k) t = GraphMod.insMod n k t
 

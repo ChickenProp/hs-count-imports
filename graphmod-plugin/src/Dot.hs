@@ -20,9 +20,7 @@ import           Control.Monad                  ( forM_
                                                 , msum
                                                 , unless
                                                 )
-import           Data.List                      ( intersperse
-                                                , transpose
-                                                )
+import           Data.List                      ( transpose )
 import           Data.Maybe                     ( isJust
                                                 , fromMaybe
                                                 , listToMaybe
@@ -30,16 +28,7 @@ import           Data.Maybe                     ( isJust
 import qualified Data.IntMap                   as IMap
 import qualified Data.Map                      as Map
 import qualified Data.IntSet                   as ISet
-import           System.IO                      ( hPutStrLn
-                                                , stderr
-                                                )
-import           System.Console.GetOpt
 import           Numeric                        ( showHex )
-
---import Paths_graphmod (version)
--- import Data.Version (showVersion)
-
-version = "0"
 
 type Nodes = Trie.Trie String [((NodeT, String), Int)]
                     -- Maps a path to:   ((node, label), nodeId)
@@ -111,15 +100,6 @@ pruneEdges es = foldr checkEdges es (IMap.toList es)
         let g1 = rmEdge x y g in if reachableIn g1 x y then g1 else g
 
     checkEdges (x, vs) g = foldr (checkEdge x) g (ISet.toList vs)
-
-
-isIgnored :: IgnoreSet -> ModName -> Bool
-isIgnored (Trie.Sub _  (Just IgnoreAll      )) _           = True
-isIgnored (Trie.Sub _  (Just (IgnoreSome ms))) ([]    , m) = elem m ms
-isIgnored (Trie.Sub _  Nothing               ) ([]    , _) = False
-isIgnored (Trie.Sub ts _) (q : qs, m) = case Map.lookup q ts of
-    Nothing -> False
-    Just t  -> isIgnored t (qs, m)
 
 
 -- XXX: We could combine collapseAll and collapse into a single pass

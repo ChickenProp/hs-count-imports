@@ -12,12 +12,8 @@ module Utils
     )
 where
 
-import           Control.Monad                  ( mplus )
-import           Control.Exception              ( evaluate )
 import           Data.Maybe                     ( catMaybes )
-import           Data.List                      ( intersperse
-                                                , isPrefixOf
-                                                )
+import           Data.List                      ( intersperse )
 import           System.Directory               ( doesFileExist )
 import           System.FilePath
 
@@ -65,19 +61,3 @@ modToFile dirs m = catMaybes `fmap` mapM check paths
     check p = do
         x <- doesFileExist p
         return (if x then Just p else Nothing)
-
-
-delit :: String -> String
-delit txt = unlines $ bird $ lines txt
-  where
-    bird (('>' : cs) : ls) = (' ' : cs) : bird ls
-    bird (l : ls) | "\\begin{code}" `isPrefixOf` l = in_code ls
-                  | otherwise                      = bird ls
-    bird [] = []
-
-    in_code (l : ls) | "\\end{code}" `isPrefixOf` l = bird ls
-                     | otherwise                    = l : in_code ls
-    in_code [] = []    -- unterminated code...
-
-
-
