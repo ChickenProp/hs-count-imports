@@ -46,7 +46,7 @@ plugin = defaultPlugin { typeCheckResultAction = install
 install :: [CommandLineOption] -> ModSummary -> TcGblEnv -> TcM TcGblEnv
 install opts ms tc_gbl = do
     let imps       = tcg_rn_imports tc_gbl
-        gm_imps    = map (convertImport . unLoc) imps
+        gm_imps    = concatMap (convertImport . unLoc) imps
         outdir     = mkOutdir opts
         path       = mkPath outdir (ms_mod ms)
         gm_modname = getModName ms
@@ -80,15 +80,44 @@ getModName ms =
     GraphMod.splitModName . moduleNameString . moduleName . ms_mod $ ms
 
 
-convertImport :: ImportDecl GhcRn -> GraphMod.Import
-convertImport (ImportDecl {..}) = GraphMod.Import
-    { impMod  = convertModName (ideclName)
-    , impType = if ideclSource then GraphMod.SourceImp else GraphMod.NormalImp
-    }
+convertImport :: ImportDecl GhcRn -> [GraphMod.Import]
+convertImport (ImportDecl {..}) =
+    let
+        modName = convertModName ideclName
+        modType =
+            if ideclSource then GraphMod.SourceImp else GraphMod.NormalImp
+    in
+        case ideclHiding of
+            Just (False, (L _ names)) -> map
+                (\n -> GraphMod.Import { impMod    = modName
+                                       , impType   = modType
+                                       , impEntity = n
+                                       }
+                )
+                (concatMap lieToString names)
+            _ -> []
 convertImport _ = error "Unreachable"
 
 convertModName :: Located ModuleName -> GraphMod.ModName
 convertModName (L _ mn) = GraphMod.splitModName (moduleNameString mn)
+
+lieToString :: LIE GhcRn -> [String]
+lieToString (L _ ie) = case ie of
+    IEVar _ (L _ (IEName (L _ name))) -> [getOccString name]
+    IEVar      _ _        -> error "type/pattern imports unimplemented"
+    IEThingAbs _ (L _ (IEName (L _ name))) -> [getOccString name]
+    IEThingAbs _ _        -> error "type/pattern imports unimplemented"
+    IEThingAll _ (L _ (IEName (L _ name))) -> [getOccString name]
+    IEThingAll _ _        -> error "type/pattern imports unimplemented"
+    IEThingWith _ _ _ _ _ -> error "IEThingWith unimplemented"
+
+    -- IEModuleContents is actually unreachable. The others I'm not sure about,
+    -- I guess at least the IE_ ones are reachable and should just be ignored.
+    IEModuleContents _ _  -> error "IEModuleContents unreachable"
+    IEGroup _ _ _         -> error "IEGroup unreachable?"
+    IEDoc      _ _        -> error "IEDoc unreachable?"
+    IEDocNamed _ _        -> error "IEDocNamed unreachable?"
+    XIE _                 -> error "XIE unreachable?"
 
 --
 -- Finalisation logic
@@ -124,7 +153,7 @@ modGraph = nub . foldMap do_one
   where
     do_one (mn, is) = mn : map do_import is
 
-    do_import (GraphMod.Import n _) = n
+    do_import (GraphMod.Import n _ _) = n
 
 --
 buildGraph :: Opts -> [Payload] -> (GraphMod.AllEdges, GraphMod.Nodes)
@@ -174,8 +203,9 @@ makeEdges nodeMap (m_from, m_to) aes = fromMaybe (error "makeEdges") $ do
 -- Serialisation logic for GraphMod types
 
 instance Binary GraphMod.Import where
-    put_ bh (GraphMod.Import mn ip) = put_ bh mn >> put_ bh ip
-    get bh = GraphMod.Import <$> get bh <*> get bh
+    put_ bh (GraphMod.Import mn ip ent) =
+        put_ bh mn >> put_ bh ip >> put_ bh ent
+    get bh = GraphMod.Import <$> get bh <*> get bh <*> get bh
 instance Binary GraphMod.ImpType where
     put_ bh c = case c of
         GraphMod.NormalImp -> putByte bh 0

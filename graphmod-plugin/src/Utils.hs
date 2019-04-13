@@ -17,8 +17,11 @@ import           Data.List                      ( intersperse )
 import           System.Directory               ( doesFileExist )
 import           System.FilePath
 
-data Import = Import { impMod :: ModName, impType :: ImpType }
-                deriving Show
+data Import = Import
+    { impMod :: ModName
+    , impType :: ImpType
+    , impEntity :: String
+    } deriving Show
 
 data ImpType = NormalImp | SourceImp
                 deriving (Show,Eq,Ord)
