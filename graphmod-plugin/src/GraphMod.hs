@@ -3,6 +3,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PackageImports #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module GraphMod where
 
@@ -10,22 +11,12 @@ import           GhcPlugins
 import           TcRnTypes
 import           HsExtension
 import           HsImpExp
-import           Binary
-
-import           Data.Maybe
-import           Data.List
 
 import           Utils                         as GraphMod
-import           Dot                           as GraphMod
 import           Args
-import qualified Trie
-
-import qualified Data.Map                      as Map
 
 import           System.FilePath
 import           System.Directory
-import           System.Console.GetOpt
-import           System.Environment             ( getArgs )
 import           System.IO
 
 printStderr :: Show a => a -> IO ()
@@ -52,18 +43,15 @@ install opts ms tc_gbl = do
         gm_modname = getModName ms
     liftIO $ do
         createDirectoryIfMissing False outdir
-        writeBinary path (gm_modname, gm_imps)
+        writeImports path gm_imps
     return tc_gbl
 
 mkOutdir :: [CommandLineOption] -> FilePath
 mkOutdir []      = defaultLocation
 mkOutdir (x : _) = x
 
-writeBinary :: Binary a => FilePath -> a -> IO ()
-writeBinary path payload = do
-    bh <- openBinMem initBinMemSize
-    put_ bh payload
-    writeBinMem bh path
+writeImports :: FilePath -> [Import] -> IO ()
+writeImports path imps = writeFile path (unlines $ map import2tsv imps)
 
 mkPath :: FilePath -> Module -> FilePath
 mkPath fp m =
@@ -119,101 +107,10 @@ lieToString (L _ ie) = case ie of
     IEDocNamed _ _        -> error "IEDocNamed unreachable?"
     XIE _                 -> error "XIE unreachable?"
 
---
--- Finalisation logic
--- We run this code at the end to gather up all the results and
--- output the dotfile.
-
-
-readImports :: FilePath -> FilePath -> IO Payload
-readImports outdir fp = do
-    readBinMem (outdir </> fp) >>= get
-
-collectImports :: IO ()
-collectImports = do
-    raw_opts <- getArgs
-    printStderr raw_opts
-    let (fs, _ms, _errs) = getOpt Permute options raw_opts
-        opts             = foldr ($) default_opts fs
-
-        outdir           = inputDir opts
-    printStderr $ ("OutDir: ", outdir)
-    files <- listDirectory outdir
-    printStderr $ ("files:", concat files)
-    usages <- mapM (readImports outdir) files
-    printStderr usages
-    let graph = buildGraph opts usages
-    putStr (GraphMod.make_dot opts graph)
-
-
-
--- Get all the ModNames to make nodes for
-modGraph :: [Payload] -> [GraphMod.ModName]
-modGraph = nub . foldMap do_one
-  where
-    do_one (mn, is) = mn : map do_import is
-
-    do_import (GraphMod.Import n _ _) = n
-
---
-buildGraph :: Opts -> [Payload] -> (GraphMod.AllEdges, GraphMod.Nodes)
-buildGraph opts payloads = maybePrune opts (aes, processNodes)
-  where
-    processNodes = collapseAll opts nodes (collapse_quals opts)
-
-    nodeMapList  = zip (modGraph payloads) [0 ..]
-
-    nodeMap      = Map.fromList nodeMapList
-
-    nodes        = foldr insertMod Trie.empty nodeMapList
-
-    aes          = foldr (makeEdges nodeMap)
-                         GraphMod.noEdges
-                         (concatMap (\(p, is) -> map (p, ) is) payloads)
-
-    insertMod (n, k) t = GraphMod.insMod n k t
-
--- Make edges between the nodes
--- Invariant: All nodes already exist in the map
-makeEdges
-    :: Map.Map GraphMod.ModName Int
-    -> (GraphMod.ModName, GraphMod.Import)
-    -> GraphMod.AllEdges
-    -> GraphMod.AllEdges
-makeEdges nodeMap (m_from, m_to) aes = fromMaybe (error "makeEdges") $ do
-    from_i <- Map.lookup m_from nodeMap
-    to_i   <- Map.lookup (GraphMod.impMod m_to) nodeMap
-    return $ case GraphMod.impType m_to of
-        GraphMod.SourceImp -> aes
-            { GraphMod.sourceEdges = GraphMod.insSet
-                                         from_i
-                                         to_i
-                                         (GraphMod.sourceEdges aes)
-            }
-        GraphMod.NormalImp -> aes
-            { GraphMod.normalEdges = GraphMod.insSet
-                                         from_i
-                                         to_i
-                                         (GraphMod.normalEdges aes)
-            }
-
-
 
 --
 -- Serialisation logic for GraphMod types
 
-instance Binary GraphMod.Import where
-    put_ bh (GraphMod.Import mn ip ent) =
-        put_ bh mn >> put_ bh ip >> put_ bh ent
-    get bh = GraphMod.Import <$> get bh <*> get bh <*> get bh
-instance Binary GraphMod.ImpType where
-    put_ bh c = case c of
-        GraphMod.NormalImp -> putByte bh 0
-        GraphMod.SourceImp -> putByte bh 1
-    get bh = getByte bh >>= return . \case
-        0 -> GraphMod.NormalImp
-        1 -> GraphMod.SourceImp
-        _ -> error "Binary:GraphMod"
-
-
-
+import2tsv :: Import -> String
+import2tsv (GraphMod.Import { impMod, impEntity }) =
+    joinModName impMod ++ "\t" ++ impEntity

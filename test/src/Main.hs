@@ -3,7 +3,7 @@ module Main
     )
 where
 
-import           A
+import           A                              ( foo )
 
 printMe = ()
 
