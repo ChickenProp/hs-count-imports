@@ -36,8 +36,9 @@ plugin = defaultPlugin { typeCheckResultAction = install
 -- information for a module.
 install :: [CommandLineOption] -> ModSummary -> TcGblEnv -> TcM TcGblEnv
 install opts ms tc_gbl = do
+    dynFlags <- getDynFlags
     let imps       = tcg_rn_imports tc_gbl
-        gm_imps    = concatMap (convertImport . unLoc) imps
+        gm_imps    = concatMap (convertImport dynFlags . unLoc) imps
         outdir     = mkOutdir opts
         path       = mkPath outdir (ms_mod ms)
         gm_modname = getModName ms
@@ -68,8 +69,8 @@ getModName ms =
     GraphMod.splitModName . moduleNameString . moduleName . ms_mod $ ms
 
 
-convertImport :: ImportDecl GhcRn -> [GraphMod.Import]
-convertImport (ImportDecl {..}) =
+convertImport :: DynFlags -> ImportDecl GhcRn -> [GraphMod.Import]
+convertImport dynFlags (ImportDecl {..}) =
     let
         modName = convertModName ideclName
         modType =
@@ -82,16 +83,17 @@ convertImport (ImportDecl {..}) =
                                        , impEntity = n
                                        }
                 )
-                (concatMap lieToString names)
+                (concatMap (lieToString dynFlags) names)
             _ -> []
-convertImport _ = error "Unreachable"
+convertImport _ _ = error "Unreachable"
 
 convertModName :: Located ModuleName -> GraphMod.ModName
 convertModName (L _ mn) = GraphMod.splitModName (moduleNameString mn)
 
-lieToString :: LIE GhcRn -> [String]
-lieToString (L _ ie) = case ie of
-    IEVar _ (L _ (IEName (L _ name))) -> [getOccString name]
+lieToString :: DynFlags -> LIE GhcRn -> [String]
+lieToString dynFlags (L _ ie) = case ie of
+    IEVar _ (L _ (IEName (L _ name))) ->
+        [showSDoc dynFlags $ pprPrefixName name]
     IEVar      _ _        -> error "type/pattern imports unimplemented"
     IEThingAbs _ (L _ (IEName (L _ name))) -> [getOccString name]
     IEThingAbs _ _        -> error "type/pattern imports unimplemented"
