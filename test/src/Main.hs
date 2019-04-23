@@ -1,3 +1,6 @@
+{-# LANGUAGE ExplicitNamespaces #-}
+{-# LANGUAGE PatternSynonyms #-}
+
 module Main
     ( main
     )
@@ -8,9 +11,18 @@ import           System.IO                      ( readFile )
 
 import           A                              ( )
 import           A                              ( (^&)
+                                                , type (+++)
+                                                , type (+++)((:+++))
+                                                , pattern PattSyn
                                                 , SomeClass(..)
-                                                , SomeClass(SomeTF, someMethod)
+                                                , SomeClass
+                                                    ( SomeTF
+                                                    , (&+&)
+                                                    , (&++)
+                                                    , someMethod
+                                                    )
                                                 , SomeType(..)
+                                                , SomeType()
                                                 , SomeType
                                                     ( SomeConstructor
                                                     , (:++)
@@ -27,17 +39,27 @@ myImports =
     [ ("System.Exit", "exitFailure")
     , ("System.IO"  , "readFile")
     , ("A"          , "(^&)")
+    , ("A"          , "type (+++)")
+    , ("A"          , "type (+++)")
+    , ("A"          , "type (+++)((:+++))")
+    , ("A"          , "pattern PattSyn")
     , ("A"          , "SomeClass")
     , ("A"          , "SomeClass(..)")
     , ("A"          , "SomeClass")
-    , ("A"          , "SomeClass(SomeTF)")
-    , ("A"          , "SomeClass(someMethod)")
-    , ("A"          , "SomeType")
-    , ("A"          , "SomeType(..)")
-    , ("A"          , "SomeType")
-    , ("A"          , "SomeType(SomeConstructor)")
-    , ("A"          , "SomeType((:++))")
-    , ("A"          , "foo")
+    , ( "A"
+      , "SomeClass(SomeTF)"
+      )
+    -- v GHC gives us the "type" even if it's not in the import list.
+    , ("A", "SomeClass(type (&+&))")
+    , ("A", "SomeClass((&++))")
+    , ("A", "SomeClass(someMethod)")
+    , ("A", "SomeType")
+    , ("A", "SomeType(..)")
+    , ("A", "SomeType")
+    , ("A", "SomeType")
+    , ("A", "SomeType(SomeConstructor)")
+    , ("A", "SomeType((:++))")
+    , ("A", "foo")
     ]
 
 main = do

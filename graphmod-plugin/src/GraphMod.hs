@@ -93,11 +93,11 @@ convertModName (L _ mn) = GraphMod.splitModName (moduleNameString mn)
 
 lieToString :: DynFlags -> LIE GhcRn -> [String]
 lieToString dynFlags (L _ ie) = case ie of
-    IEVar      _ (unwrap -> name) -> [n2s name]
-    IEThingAbs _ (unwrap -> name) -> [n2s name]
-    IEThingAll _ (unwrap -> name) -> [n2s name, n2s name ++ "(..)"]
-    IEThingWith _ (unwrap -> name) _ (map unwrap -> ns) _ ->
-        n2s name : map (\n -> n2s name ++ "(" ++ n2s n ++ ")") ns
+    IEVar      _ (wn2s -> name) -> [name]
+    IEThingAbs _ (wn2s -> name) -> [name]
+    IEThingAll _ (wn2s -> name) -> [name, name ++ "(..)"]
+    IEThingWith _ (wn2s -> name) _ (map wn2s -> ns) _ ->
+        name : map (\n -> name ++ "(" ++ n ++ ")") ns
 
     -- IEModuleContents is actually unreachable. The others I'm not sure about,
     -- but I haven't been able to reach them.
@@ -107,9 +107,13 @@ lieToString dynFlags (L _ ie) = case ie of
     IEDocNamed _ _       -> error "IEDocNamed unreachable?"
     XIE _                -> error "XIE unreachable?"
   where
+    n2s :: Name -> String
     n2s n = showSDoc dynFlags $ pprPrefixName n
-    unwrap (L _ (IEName (L _ n))) = n
-    unwrap _                      = error "type/pattern imports unimplemented"
+
+    wn2s :: LIEWrappedName Name -> String
+    wn2s (L _ (IEName    (L _ n))) = n2s n
+    wn2s (L _ (IEType    (L _ n))) = "type " ++ n2s n
+    wn2s (L _ (IEPattern (L _ n))) = "pattern " ++ n2s n
 
 
 --
