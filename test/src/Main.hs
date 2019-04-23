@@ -6,7 +6,15 @@ where
 import           System.Exit                    ( exitFailure )
 import           System.IO                      ( readFile )
 
+import           A                              ( )
 import           A                              ( (^&)
+                                                , SomeClass(..)
+                                                , SomeClass(SomeTF, someMethod)
+                                                , SomeType(..)
+                                                , SomeType
+                                                    ( SomeConstructor
+                                                    , (:++)
+                                                    )
                                                 , foo
                                                 )
 
@@ -19,6 +27,16 @@ myImports =
     [ ("System.Exit", "exitFailure")
     , ("System.IO"  , "readFile")
     , ("A"          , "(^&)")
+    , ("A"          , "SomeClass")
+    , ("A"          , "SomeClass(..)")
+    , ("A"          , "SomeClass")
+    , ("A"          , "SomeClass(SomeTF)")
+    , ("A"          , "SomeClass(someMethod)")
+    , ("A"          , "SomeType")
+    , ("A"          , "SomeType(..)")
+    , ("A"          , "SomeType")
+    , ("A"          , "SomeType(SomeConstructor)")
+    , ("A"          , "SomeType((:++))")
     , ("A"          , "foo")
     ]
 
