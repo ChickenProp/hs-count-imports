@@ -34,7 +34,7 @@ resolver: lts-13.14
 #  - auto-update
 #  - wai
 packages:
-- graphmod-plugin
+- hs-count-imports
 - test
 # Dependency packages to be pulled from upstream that are not in the resolver
 # using the same syntax as the packages field.

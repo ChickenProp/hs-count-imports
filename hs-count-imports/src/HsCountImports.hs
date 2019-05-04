@@ -6,14 +6,14 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-module GraphMod where
+module HsCountImports where
 
 import           GhcPlugins
 import           TcRnTypes
 import           HsExtension
 import           HsImpExp
 
-import           Utils                         as GraphMod
+import           Utils                         as HsCountImports
 import           Args
 
 import           System.FilePath
@@ -60,36 +60,35 @@ mkPath fp m =
     fp </> (moduleNameString (moduleName m) ++ (show (moduleUnitId m)))
 
 
--- Converting to GraphMod data types
+-- Converting to HsCountImports data types
 --
 -- The type we are going to serialise
-type Payload = (GraphMod.ModName, [GraphMod.Import])
+type Payload = (HsCountImports.ModName, [HsCountImports.Import])
 
-getModName :: ModSummary -> GraphMod.ModName
+getModName :: ModSummary -> HsCountImports.ModName
 getModName ms =
-    GraphMod.splitModName . moduleNameString . moduleName . ms_mod $ ms
+    HsCountImports.splitModName . moduleNameString . moduleName . ms_mod $ ms
 
 
-convertImport :: DynFlags -> ImportDecl GhcRn -> [GraphMod.Import]
+convertImport :: DynFlags -> ImportDecl GhcRn -> [HsCountImports.Import]
 convertImport dynFlags (ImportDecl {..}) =
-    let
-        modName = convertModName ideclName
-        modType =
-            if ideclSource then GraphMod.SourceImp else GraphMod.NormalImp
-    in
-        case ideclHiding of
+    let modName = convertModName ideclName
+        modType = if ideclSource
+            then HsCountImports.SourceImp
+            else HsCountImports.NormalImp
+    in  case ideclHiding of
             Just (False, (L _ names)) -> map
-                (\n -> GraphMod.Import { impMod    = modName
-                                       , impType   = modType
-                                       , impEntity = n
-                                       }
+                (\n -> HsCountImports.Import { impMod    = modName
+                                             , impType   = modType
+                                             , impEntity = n
+                                             }
                 )
                 (concatMap (lieToString dynFlags) names)
             _ -> []
 convertImport _ _ = error "Unreachable"
 
-convertModName :: Located ModuleName -> GraphMod.ModName
-convertModName (L _ mn) = GraphMod.splitModName (moduleNameString mn)
+convertModName :: Located ModuleName -> HsCountImports.ModName
+convertModName (L _ mn) = HsCountImports.splitModName (moduleNameString mn)
 
 lieToString :: DynFlags -> LIE GhcRn -> [String]
 lieToString dynFlags (L _ ie) = case ie of
@@ -117,8 +116,8 @@ lieToString dynFlags (L _ ie) = case ie of
 
 
 --
--- Serialisation logic for GraphMod types
+-- Serialisation logic for HsCountImports types
 
 import2tsv :: Import -> String
-import2tsv (GraphMod.Import { impMod, impEntity }) =
+import2tsv (HsCountImports.Import { impMod, impEntity }) =
     joinModName impMod ++ "\t" ++ impEntity

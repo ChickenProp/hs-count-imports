@@ -41,7 +41,7 @@ data IgnoreSpec = IgnoreAll | IgnoreSome [String]  deriving Show
 type OptT = Opts -> Opts
 
 defaultLocation :: FilePath
-defaultLocation = "/root/graphmod-plugin/output"
+defaultLocation = "/root/hs-count-imports/output"
 
 default_opts :: Opts
 default_opts = Opts { inputDir       = defaultLocation

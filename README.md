@@ -1,14 +1,10 @@
-This is a reimplementation of `graphmod` using a source plugin.
+Count the imports in a haskell project.
 
-The advantage is that the implementation is simpler and more robust as
-it doesn't rely on lexing source files are finding files on disk. Instead,
-we just serialise this information from the internal compiler state to
-generate the graph.
+I wrote this to help analyse what things would be sensible to put into a custom
+prelude. And also because I was curious about source imports.
 
-The plugin is also an example of the design pattern of recording information
-as the plugin runs and then collating information at the end.
-
-`graphmod` was originally written by Thomas Halgren and Iavor Diatchki.
+The code is based on
+[`graphmod-plugin`](https://github.com/mpickering/graphmod-plugin).
 
 # Manual Usage
 
@@ -16,30 +12,36 @@ In order to run the plugin manually, pass the options appropiately to GHC when
 compiling your package.
 
 ```
--fplugin=GraphMod -fplugin-opt GraphMod:output
+-fplugin=HsCountImports -fplugin-opt=HsCountImports:output
 ```
 
-Then, call the `graphmod-plugin` executable passing the `--indir` flag
-to indicate where the plugin stored the information.
+This puts a bunch of files in the `output` directory. You can collate them in the shell:
 
 ```
-graphmod-plugin --indir output
+cat output/* | sort | uniq -c | sort -n
 ```
 
-You can this pass this output to `dot` in order to generate an image or pdf.
+# Stack Usage
 
-In addition, `graphmod-plugin` takes all the options that the old `graphmod`
-executable accepted.
+If you want to use this in a stack project, the simplest way I know of is to add
+`hs-count-imports` to your stack.yaml *and* your package.cabal.
 
-# Nix Usage
-
-It is recomended to use the plugin with nix which will handle the finalisation
-and generation steps appropiately. See the `default.nix` file for how to achieve
-this.
-
-If you want to try this example then it is strongly recommended to use [cachix](http://cachix.org) as otherwise you will build GHC from source.
+In stack.yaml, it should go in `extra-deps`, for example
 
 ```
-cachix use mpickering
-nix-build
+extra-deps:
+- /path/to/hs-count-imports/hs-count-imports
 ```
+
+(Note the doubled final path component: the first points at this repository, the second is contained in it.)
+
+Then in your .cabal file, add `hs-count-imports` to `build-depends`. You may need to do this in multiple places.
+
+Finally, build with
+
+```
+stack build --ghc-options="-fplugin=GraphMod -fplugin-opt=GraphMod:output"
+```
+
+Be careful to build all components you're interested in, and to clear the
+`output` directory between runs.

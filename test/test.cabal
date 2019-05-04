@@ -7,8 +7,8 @@ version:             0.1.0.0
 -- description:
 license:             BSD3
 license-file:        LICENSE
-author:              Matthew Pickering
-maintainer:          matthewtpickering@gmail.com
+author:              Phil Hazelden
+maintainer:          philip.hazelden@gmail.com
 -- copyright:
 -- category:
 build-type:          Simple
@@ -19,7 +19,9 @@ executable test
   main-is:  Main.hs
   other-modules: A
   -- other-extensionu
-  build-depends:       base >=4.12 && <4.13, graphmod-plugin
+  build-depends:       base >=4.12 && <4.13, hs-count-imports
   hs-source-dirs:      src
-  ghc-options: -fplugin=GraphMod -fplugin-opt=GraphMod:test-out -ddump-ds
+  ghc-options:         -fplugin=HsCountImports
+                       -fplugin-opt=HsCountImports:test-out
+                       -ddump-ds
   default-language:    Haskell2010
